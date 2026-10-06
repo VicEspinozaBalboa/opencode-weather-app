@@ -1,5 +1,6 @@
 import type { City, Unit } from "./config";
 import type { CurrentWeather } from "./api";
+import { green, yellow } from "./colors";
 
 const WMO_CODES: Record<number, string> = {
   0: "Despejado",
@@ -50,15 +51,15 @@ function oneDecimal(value: number): string {
 export function formatWeather(city: City, weather: CurrentWeather, unit: Unit): string {
   const tempUnit = unit === "celsius" ? "°C" : "°F";
   const windUnit = unit === "celsius" ? "km/h" : "mph";
-  const lines = ["", `  ${labelCity(city)}`];
-  lines.push(`  Clima:        ${describeWeather(weather.weatherCode)}`);
-  lines.push(`  Temperatura:  ${oneDecimal(weather.temperature)} ${tempUnit}`);
+  const lines = ["", green(`  ${labelCity(city)}`)];
+  lines.push(green(`  Clima:        ${describeWeather(weather.weatherCode)}`));
+  lines.push(yellow(`  Temperatura:  ${oneDecimal(weather.temperature)} ${tempUnit}`));
   if (weather.apparentTemperature != null) {
-    lines.push(`  Sensación:    ${oneDecimal(weather.apparentTemperature)} ${tempUnit}`);
+    lines.push(green(`  Sensación:    ${oneDecimal(weather.apparentTemperature)} ${tempUnit}`));
   }
-  lines.push(`  Viento:       ${oneDecimal(weather.windSpeed)} ${windUnit}`);
+  lines.push(green(`  Viento:       ${oneDecimal(weather.windSpeed)} ${windUnit}`));
   if (weather.humidity != null) {
-    lines.push(`  Humedad:      ${weather.humidity} %`);
+    lines.push(green(`  Humedad:      ${weather.humidity} %`));
   }
   lines.push("");
   return lines.join("\n");
