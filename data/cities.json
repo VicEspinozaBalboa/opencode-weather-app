@@ -1,0 +1,11 @@
+[
+  {
+    "id": "b89b9b42-0d64-479a-b6f2-86a774db55b3",
+    "name": "La Paz",
+    "latitude": -16.5,
+    "longitude": -68.15,
+    "country": "Bolivia",
+    "admin1": "Departamento de La Paz",
+    "isDefault": true
+  }
+]
