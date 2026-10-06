@@ -82,13 +82,27 @@ jobs:
   release:
     name: Publicar Release
     needs: build
+    if: ${{ !cancelled() && needs.build.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - name: Descargar artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
+          pattern: weather-*
           merge-multiple: true
+          if-no-files-found: ignore
+
+      - name: Verificar assets disponibles
+        id: assets
+        run: |
+          COUNT=$(ls release-assets/*.zip 2>/dev/null | wc -l)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "Zips disponibles: ${COUNT}"
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "::error::Ninguna plataforma compiló; no se crea el Release"
+            exit 1
+          fi
 
       - name: Crear Release con assets
         uses: softprops/action-gh-release@v2
