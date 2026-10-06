@@ -1,7 +1,7 @@
 import { getDefaultCity, loadConfig, saveConfig } from "./src/config";
 import type { City, Config, Unit } from "./src/config";
-import { fetchWeather, searchCities } from "./src/api";
-import { formatWeather, labelCity } from "./src/weather";
+import { fetchDailyForecast, fetchWeather, searchCities } from "./src/api";
+import { formatDailyForecast, formatWeather, labelCity } from "./src/weather";
 import { ask, askNumber, askYesNo } from "./src/prompts";
 import { cyan, green, red } from "./src/colors";
 
@@ -20,6 +20,7 @@ function printMenu(config: Config): void {
   console.log(cyan("  3. Buscar y agregar ciudad"));
   console.log(cyan("  4. Eliminar ciudad"));
   console.log(cyan("  5. Establecer ciudad default"));
+  console.log(cyan("  6. Pronóstico 7 días (default)"));
   console.log(cyan(`  8. Ajustes (${unitSymbol(config.unit)})`));
   console.log(cyan("  9. Salir"));
   console.log(cyan(LINE));
@@ -45,6 +46,21 @@ async function weatherOfDefaultCity(config: Config): Promise<void> {
     return;
   }
   await showWeatherFor(city, config.unit);
+  console.log("");
+}
+
+async function forecastOfDefaultCity(config: Config): Promise<void> {
+  const city = getDefaultCity(config);
+  if (!city) {
+    console.log(red("  No hay ciudad default. Usa la opción 5 para establecer una.") + "\n");
+    return;
+  }
+  try {
+    const forecast = await fetchDailyForecast(city, config.unit);
+    console.log(formatDailyForecast(city, forecast, config.unit));
+  } catch {
+    console.log(red(`  No se pudo obtener el pronóstico de ${labelCity(city)}.`));
+  }
   console.log("");
 }
 
@@ -202,6 +218,9 @@ while (true) {
       break;
     case "5":
       await setDefaultCity(config);
+      break;
+    case "6":
+      await forecastOfDefaultCity(config);
       break;
     case "8":
       await settingsMenu(config);

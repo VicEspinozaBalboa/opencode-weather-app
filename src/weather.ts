@@ -1,5 +1,5 @@
 import type { City, Unit } from "./config";
-import type { CurrentWeather } from "./api";
+import type { CurrentWeather, DailyForecast } from "./api";
 import { green, yellow } from "./colors";
 
 const WMO_CODES: Record<number, string> = {
@@ -60,6 +60,51 @@ export function formatWeather(city: City, weather: CurrentWeather, unit: Unit): 
   lines.push(green(`  Viento:       ${oneDecimal(weather.windSpeed)} ${windUnit}`));
   if (weather.humidity != null) {
     lines.push(green(`  Humedad:      ${weather.humidity} %`));
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+const DAY_NAMES = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+
+function dayLabel(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (year == null || month == null || day == null) return isoDate;
+  const date = new Date(year, month - 1, day);
+  const name = DAY_NAMES[date.getDay()] ?? "";
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${name} ${dd}/${mm}`;
+}
+
+export function formatDailyForecast(
+  city: City,
+  forecast: DailyForecast,
+  unit: Unit,
+): string {
+  const tempUnit = unit === "celsius" ? "°C" : "°F";
+  const lines = [
+    "",
+    green(`  ${labelCity(city)}`),
+    green(`  Pronóstico 7 días (${tempUnit})`),
+    "",
+    green(
+      `  ${"DÍA".padEnd(10)}${"CLIMA".padEnd(28)}${"MÁX / MÍN".padStart(14)}${"LLUVIA".padStart(9)}`,
+    ),
+  ];
+  for (const day of forecast.days) {
+    const label = dayLabel(day.date);
+    const description = describeWeather(day.weatherCode);
+    const temps = `${oneDecimal(day.tempMax)}° / ${oneDecimal(day.tempMin)}°`;
+    const rain =
+      day.precipitationProbability != null ? `${day.precipitationProbability} %` : "—";
+    lines.push(
+      "  " +
+        green(label.padEnd(10)) +
+        green(description.padEnd(28)) +
+        yellow(temps.padStart(14)) +
+        green(rain.padStart(9)),
+    );
   }
   lines.push("");
   return lines.join("\n");

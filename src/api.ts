@@ -30,6 +30,28 @@ type ForecastResponse = {
   };
 };
 
+export type DailyForecastDay = {
+  date: string;
+  weatherCode: number;
+  tempMax: number;
+  tempMin: number;
+  precipitationProbability?: number;
+};
+
+export type DailyForecast = {
+  days: DailyForecastDay[];
+};
+
+type DailyForecastResponse = {
+  daily?: {
+    time?: string[];
+    weather_code?: (number | null)[];
+    temperature_2m_max?: (number | null)[];
+    temperature_2m_min?: (number | null)[];
+    precipitation_probability_max?: (number | null)[];
+  };
+};
+
 export async function searchCities(name: string): Promise<City[]> {
   const url = `${GEOCODING_API}?name=${encodeURIComponent(name)}&count=5&language=es&format=json`;
   const res = await fetch(url);
@@ -66,4 +88,47 @@ export async function fetchWeather(city: City, unit: Unit): Promise<CurrentWeath
     windSpeed: current.wind_speed_10m,
     humidity: current.relative_humidity_2m,
   };
+}
+
+export async function fetchDailyForecast(city: City, unit: Unit): Promise<DailyForecast> {
+  const params = new URLSearchParams({
+    latitude: String(city.latitude),
+    longitude: String(city.longitude),
+    daily:
+      "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    forecast_days: "7",
+    temperature_unit: unit,
+    wind_speed_unit: unit === "fahrenheit" ? "mph" : "kmh",
+    timezone: "auto",
+  });
+  const res = await fetch(`${FORECAST_API}?${params}`);
+  if (!res.ok) throw new Error(`Forecast API: HTTP ${res.status}`);
+  const data = (await res.json()) as DailyForecastResponse;
+  const daily = data.daily;
+  if (!daily?.time?.length) throw new Error("Forecast API: respuesta sin pronóstico diario");
+
+  const days: DailyForecastDay[] = [];
+  daily.time.forEach((date, index) => {
+    const weatherCode = daily.weather_code?.[index];
+    const tempMax = daily.temperature_2m_max?.[index];
+    const tempMin = daily.temperature_2m_min?.[index];
+    if (
+      typeof weatherCode !== "number" ||
+      typeof tempMax !== "number" ||
+      typeof tempMin !== "number"
+    ) {
+      return;
+    }
+    const precipitation = daily.precipitation_probability_max?.[index];
+    days.push({
+      date,
+      weatherCode,
+      tempMax,
+      tempMin,
+      precipitationProbability:
+        typeof precipitation === "number" ? precipitation : undefined,
+    });
+  });
+  if (days.length === 0) throw new Error("Forecast API: respuesta sin datos diarios");
+  return { days };
 }

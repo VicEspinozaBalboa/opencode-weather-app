@@ -7,3 +7,4 @@
 - **Binario:** compila bien; revisar que `./weather` guarde datos en `~/.config/weather-cli/`.
 - **Escalabilidad:** ¿qué tan fácil será expandir con nuevas funcionalidades?
 - **Carga:** ¿hay estado de carga en las tareas asíncronas?
+- **7 day forecast:** ✅ Hecho — opción 6, `fetchDailyForecast` en `src/api.ts` (7 días, `timezone=auto`) y `formatDailyForecast` en `src/weather.ts`.
