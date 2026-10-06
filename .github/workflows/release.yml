@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Verificar versión
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar tag contra package.json
+        run: |
+          PKG_VERSION="$(jq -r .version package.json)"
+          if [ "${GITHUB_REF_NAME}" != "v${PKG_VERSION}" ]; then
+            echo "::error::El tag ${GITHUB_REF_NAME} no coincide con v${PKG_VERSION} de package.json"
+            exit 1
+          fi
+          echo "Versión válida: ${GITHUB_REF_NAME}"
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            binary: weather
+          - os: macos-latest
+            platform: darwin-arm64
+            binary: weather
+          - os: windows-latest
+            platform: windows-x64
+            binary: weather.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Instalar dependencias
+        run: bun install --frozen-lockfile
+
+      - name: Construir binario
+        run: bun run build
+
+      - name: Empaquetar binario (unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p staging
+          cp "dist/${{ matrix.binary }}" "staging/${{ matrix.binary }}"
+          chmod +x "staging/${{ matrix.binary }}"
+          (cd staging && zip -j "../weather-${GITHUB_REF_NAME}-${{ matrix.platform }}.zip" "${{ matrix.binary }}")
+
+      - name: Empaquetar binario (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path staging | Out-Null
+          Copy-Item "dist/${{ matrix.binary }}" "staging/${{ matrix.binary }}"
+          Compress-Archive -Path "staging/${{ matrix.binary }}" -DestinationPath "weather-${env:GITHUB_REF_NAME}-${{ matrix.platform }}.zip" -Force
+
+      - name: Subir artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weather-${{ matrix.platform }}
+          path: weather-*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publicar Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Crear Release con assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Weather CLI ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release-assets/*.zip
